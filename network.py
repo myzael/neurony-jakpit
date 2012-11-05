@@ -1,10 +1,16 @@
 import random
-import sys
+from math import exp
 
 __author__ = 'Pita'
 
 def get_output(layer):
     return [l.output for l in layer]
+
+def step_f(input):
+    return 0.0 if input <= 0.0 else 1.0
+
+def log_f(input):
+    return 1.0 / (1.0 + exp(-1.0 * input))
 
 class Node:
     """
@@ -12,22 +18,24 @@ class Node:
     Each node has information about network and layer in which it's in -
     it simplifies computation process.
     """
-    def __init__(self, layer,network,weights=[],activ_f=None):
+    def __init__(self,layer,network,weights=[],activ_f=None,bias=0.0):
         self.weights = weights
-        self.output = None
         self.layer = layer
+        self.output = None
+        self.bias = bias
         self.network = network
         self.activ_f = activ_f
 
+
     def compute(self):
-        # multiply weights by output of previous layer
-        self.output = sum(x*y for x,y in zip(self.weights,get_output(self.network.layers[self.layer - 1])))
+        # multiply weights by output of previous layer adding bias at the end
+        self.output = sum(x*y for x,y in zip(self.weights,get_output(self.network.layers[self.layer - 1]))) - self.bias
         # apply activation function
         if self.activ_f is not None:
             self.output = self.activ_f(self.output)
 
     def __repr__(self):
-        return "w: " + str(self.weights) + ", output:" + str(self.output) + " layer:" + str(self.layer)
+        return "w: %s, bias:%s, output:%s" % (str(self.weights), str(self.bias), str(self.output))
 
 
 class Network:
@@ -37,6 +45,12 @@ class Network:
     """
     def __init__(self):
         self.layers = []
+
+    def __repr__(self):
+        s = ""
+        for index,l in enumerate(self.layers):
+            s= "".join([s,"layer ",str(index),":\n",str(l),"\n"])
+        return s
 
     def compute(self,input):
         """
@@ -56,7 +70,7 @@ class Network:
         """
         return get_output(self.layers[len(self.layers)-1])
 
-    def create_from_file(self,filename):
+    def create_from_file(self,filename,activ_f):
         """
         Initialize neural network based on given file
         """
@@ -73,14 +87,14 @@ class Network:
             while line:
                 self.layers.append([])
                 while line and "---" not in line:
-                    #TODO Active fun!
-                    self.layers[actual_l].append( Node(actual_l,self,[float(l) for l in line.split()]) )
+                    params = line.split()
+                    self.layers[actual_l].append( Node(actual_l,self,[float(l) for l in params[:-1]],activ_f,float(params[-1])))
                     line = f.readline()
                 actual_l+=1
                 line = f.readline()
 
 
-    def create_random(self,arguments):
+    def create_random(self,arguments,activ_f):
         """
         Initialize neural network with random weights
         param: arguments: quantity of nodes in each layer
@@ -91,7 +105,7 @@ class Network:
 
         # create all other layers
         for index,a in enumerate(arguments[1:]):
-            layer = [ Node(index+1,self,[random.random() for _ in xrange(arguments[index])]) for _ in xrange(a) ]
+            layer = [ Node(index+1,self,[random.random() for _ in xrange(arguments[index])],activ_f) for _ in xrange(a) ]
             self.layers.append(layer)
 
 
