@@ -11,22 +11,23 @@ def main():
     parser.add_argument('--data',nargs=1)
     parser.add_argument('--fun',nargs=1)
     args = parser.parse_args()
+    fun = None
+    if args.fun and args.fun[0] == "step":
+        fun = network.step_f
+    elif args.fun and args.fun[0] == "log":
+        fun = network.log_f
 
-    if args.fun == "step":
-        args.fun = network.step_f
-    elif args.fun == "log":
-        args.fun == network.log_f
     if args.random:
-        net.create_random(args.random,args.fun)
+        net.create_random(args.random,fun)
     elif args.data:
-        net.create_from_file(args.data,args.fun)
+        net.create_from_file(args.data[0],fun)
 
     while True:
         var = raw_input("Enter input vector:")
         input = [float(a) for a in var.split()]
         net.compute(input)
         print "network after computation:"
-        print net.layers
+        print net
         print "network result is:"
         print net.result()
 

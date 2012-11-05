@@ -76,7 +76,7 @@ class Network:
         """
         with open(filename) as f:
             # create first layer
-            first_layer_nodes = len(f.readline().split())
+            first_layer_nodes = len(f.readline().split())-1
             first_layer = [ Node(0,self) for _ in xrange(first_layer_nodes)]
             self.layers.append(first_layer)
             f.seek(0)
