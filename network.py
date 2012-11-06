@@ -121,6 +121,6 @@ class NetworkFactory:
 
         # create all other layers
         for index,a in enumerate(arguments[1:]):
-            layer = [ Node(index+1,net,[random.random() for _ in xrange(arguments[index])],activ_f) for _ in xrange(a) ]
+            layer = [ Node(index+1,net,[random.random()*2.0 - 1.0 for _ in xrange(arguments[index])],activ_f) for _ in xrange(a) ]
             net.layers.append(layer)
         return net
