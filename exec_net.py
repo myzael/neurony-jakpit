@@ -22,12 +22,12 @@ def main():
         net= NetworkFactory().build_from_file(args.data[0],fun)
 
     while True:
-        var = raw_input("Enter input vector:")
+        var = raw_input("\n----\nEnter input vector:")
         input = [float(a) for a in var.split()]
         net.compute(input)
-        print "network after computation:"
+        print "\nNetwork after computation:"
         print net
-        print "network result is:"
+        print "Network result is:"
         print net.result()
 
 
