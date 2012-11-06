@@ -7,9 +7,15 @@ def get_output(layer):
     return [l.output for l in layer]
 
 def step_f(input):
+    """
+    Activation function: step function
+    """
     return 0.0 if input <= 0.0 else 1.0
 
 def log_f(input):
+    """
+    Activation function: sigmoid function
+    """
     return 1.0 / (1.0 + exp(-1.0 * input))
 
 class Node:
@@ -70,42 +76,51 @@ class Network:
         """
         return get_output(self.layers[len(self.layers)-1])
 
-    def create_from_file(self,filename,activ_f):
+
+class NetworkFactory:
+    """
+    Provides method which allows to initialize neural network.
+    Network can be created from filedata or with random weights and bias
+    """
+    def build_from_file(self,filename,activ_f):
         """
         Initialize neural network based on given file
         """
+
+        net = Network()
         with open(filename) as f:
             # create first layer
             first_layer_nodes = len(f.readline().split())-1
-            first_layer = [ Node(0,self) for _ in xrange(first_layer_nodes)]
-            self.layers.append(first_layer)
+            first_layer = [ Node(0,net) for _ in xrange(first_layer_nodes)]
+            net.layers.append(first_layer)
             f.seek(0)
 
             #create all other layers
             line = f.readline()
             actual_l = 1
             while line:
-                self.layers.append([])
+                net.layers.append([])
                 while line and "---" not in line:
                     params = line.split()
-                    self.layers[actual_l].append( Node(actual_l,self,[float(l) for l in params[:-1]],activ_f,float(params[-1])))
+                    net.layers[actual_l].append( Node(actual_l,net,[float(l) for l in params[:-1]],activ_f,float(params[-1])))
                     line = f.readline()
                 actual_l+=1
                 line = f.readline()
+        return net
 
 
-    def create_random(self,arguments,activ_f):
+    def build_random(self,arguments,activ_f):
         """
         Initialize neural network with random weights
         param: arguments: quantity of nodes in each layer
         """
+        net = Network()
         # create first layer
-        first_layer = [ Node(0,self) for _ in xrange(arguments[0])]
-        self.layers.append(first_layer)
+        first_layer = [ Node(0,net) for _ in xrange(arguments[0])]
+        net.layers.append(first_layer)
 
         # create all other layers
         for index,a in enumerate(arguments[1:]):
-            layer = [ Node(index+1,self,[random.random() for _ in xrange(arguments[index])],activ_f) for _ in xrange(a) ]
-            self.layers.append(layer)
-
-
+            layer = [ Node(index+1,net,[random.random() for _ in xrange(arguments[index])],activ_f) for _ in xrange(a) ]
+            net.layers.append(layer)
+        return net

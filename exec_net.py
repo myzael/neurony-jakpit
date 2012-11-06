@@ -1,11 +1,10 @@
 import argparse
-import network
+from network import NetworkFactory, step_f,log_f
 
 __author__ = 'pita'
 
 
 def main():
-    net = network.Network()
     parser = argparse.ArgumentParser()
     parser.add_argument('--random',nargs='*',type=int)
     parser.add_argument('--data',nargs=1)
@@ -13,14 +12,14 @@ def main():
     args = parser.parse_args()
     fun = None
     if args.fun and args.fun[0] == "step":
-        fun = network.step_f
+        fun = step_f
     elif args.fun and args.fun[0] == "log":
-        fun = network.log_f
+        fun = log_f
 
     if args.random:
-        net.create_random(args.random,fun)
+        net = NetworkFactory().build_random(args.random,fun)
     elif args.data:
-        net.create_from_file(args.data[0],fun)
+        net= NetworkFactory().build_from_file(args.data[0],fun)
 
     while True:
         var = raw_input("Enter input vector:")
