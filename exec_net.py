@@ -1,5 +1,5 @@
 import argparse
-from network import NetworkFactory, step_f,log_f
+from network import NetworkFactory,Network, step_f,log_f
 
 __author__ = 'pita'
 
@@ -16,10 +16,11 @@ def main():
     elif args.fun and args.fun[0] == "log":
         fun = log_f
 
+    net = Network()
     if args.random:
-        net = NetworkFactory().build_random(args.random,fun)
+        net = NetworkFactory().build_random(net,args.random,fun)
     elif args.data:
-        net= NetworkFactory().build_from_file(args.data[0],fun)
+        net= NetworkFactory().build_from_file(net,args.data[0],fun)
 
     while True:
         var = raw_input("\n----\nEnter input vector:")
