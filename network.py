@@ -6,6 +6,12 @@ __author__ = 'Pita'
 def get_output(layer):
     return [l.output for l in layer]
 
+def get_with_conscious(net):
+    if net.conscious:
+        return [(i,node) for i,node in enumerate(net.layers[1]) if node.conscious > net.conscious_min]
+    else:
+        return net.layers[1]
+
 def step_f(input):
     """
     Activation function: step function
@@ -17,6 +23,19 @@ def log_f(input):
     Activation function: sigmoid function
     """
     return 1.0 / (1.0 + exp(-1.0 * input))
+
+def euclidean(x,y):
+    sumSq=0.0
+
+    #add up the squared differences
+    for i in range(len(x)):
+        sumSq+=(x[i]-y[i])**2
+
+    #take the square root of the result
+    return sumSq**0.5
+
+def compare_euclidean(net,x,y):
+    return cmp(euclidean(x,get_output(net.layers[0])),euclidean(y,get_output(net.layers[0])))
 
 class Node:
     """
@@ -86,12 +105,85 @@ class Network:
         """
         return get_output(self.layers[len(self.layers)-1])
 
+class KohonenNetwork(Network):
+    """
+    This network has 2 layers - input and kohonen layer.
+    """
+
+    def learn(self,step,steps,learning_set):
+        """
+        Represents one step in learning process
+        """
+        for data_set in learning_set:
+            self.set_input(data_set)
+            n = self.findWinner()
+            self.modifyConscious(n)
+            neighbors = self.findNeighbors(n)
+            self.modifyWeights([(n,1)] + neighbors)
+        self.reduceFactors(step,steps)
+
+    def findWinner(self):
+        '''
+        Retrieves nr of node which is closest to input vector
+        '''
+        weights = [(i, x.weights) for i,x in get_with_conscious(self)]
+        # sort due to distance from input vector
+        weights.sort(cmp=lambda x,y : compare_euclidean(self,x[1],y[1]))
+        # return index of winning node
+        return weights[0][0]
+
+    def findNeighbors1D(self, n):
+        """
+        Returns list of tuples with two elements - first is the nr of neighbor node, second is distance
+        """
+        neighbors = []
+        for i in xrange(1,self.radius+1):
+            if n-i >= 0:
+                neighbors.append( (n-i,i+1) )
+            if n+i < len(self.layers[1]):
+                neighbors.append( (n+i,i+1) )
+        return neighbors
+
+    def findNeighbors2D(self, n):
+        """
+        Returns list of tuples with two elements - first is the nr of neighbor node, second is distance
+        """
+        rows = sqrt(len(self.layers[1]))
+        neighbors = []
+        for i in xrange(len(self.layers[1])):
+            if n != i:
+                dist = abs(i // rows - n // rows) + abs(i % rows - n % rows)
+                if dist <= self.radius:
+                    neighbors.append( (i,int(dist)+1) )
+        return neighbors
+
+    def modifyWeights(self, neighbors):
+        for node,radius in neighbors:
+            for i,values in enumerate(zip(self.layers[1][node].weights,get_output(self.layers[0]))):
+                self.layers[1][node].weights[i] += self.teta * (1 / radius) * (values[1] - values[0])
+
+    def reduceFactors(self,step,steps):
+        self.teta = self.max_teta - self.max_teta * sqrt(step/steps)
+
+    def modifyConscious(self, n):
+        self.layers[1][n].conscious -= self.conscious_min
+        for i,node in enumerate(self.layers[1]):
+            if i != n:
+                new_val = node.conscious + 1.0 / len(self.layers[1])
+                node.conscious = new_val if new_val <= 1.0 else 1.0
 
 class NetworkFactory:
     """
     Provides method which allows to initialize neural network.
     Network can be created from filedata or with random weights and bias
     """
+
+    def get_network(self):
+        return Network()
+
+    def get_kohonen_network(self):
+        return KohonenNetwork()
+
     def build_from_file(self,net,filename,activ_f):
         """
         Initialize neural network based on given file
@@ -123,7 +215,7 @@ class NetworkFactory:
         return net
 
 
-    def build_random(self,net,arguments,activ_f):
+    def build_random(self,net,arguments,activ_f,init_zeros=False):
         """
         Initialize neural network with random weights
         param: arguments: quantity of nodes in each layer
@@ -134,96 +226,9 @@ class NetworkFactory:
 
         # create all other layers
         for index,a in enumerate(arguments[1:]):
-            layer = [ Node(index+1,net,[random.random()*2.0 - 1.0 for _ in xrange(arguments[index])],activ_f) for _ in xrange(a) ]
+            if init_zeros:
+                layer = [ Node(index+1,net,[0 for _ in xrange(arguments[index])],activ_f) for _ in xrange(a) ]
+            else:
+                layer = [ Node(index+1,net,[random.random()*2.0 - 1.0 for _ in xrange(arguments[index])],activ_f) for _ in xrange(a) ]
             net.layers.append(layer)
         return net
-
-class KohonenNetwork(Network):
-    '''
-    This network has 2 layers - input and kohonen layer.
-    '''
-
-    def compare(self,x,y):
-        return cmp(euclidean(x,get_output(self.layers[0])),euclidean(y,get_output(self.layers[0])))
-
-    def findWinner(self):
-        '''
-        Retrieves nr of node which is closest to input vector
-        '''
-#        print "conscience: " + str([n.conscious for n in self.layers[1]])
-        weights = [(i, x.weights) for i,x in get_with_conscious(self)]
-#        print "weights:" + str(weights)
-        # sort due to distance from input vector
-        weights.sort(cmp=lambda x,y : self.compare(x[1],y[1]))
-#        print "weights sorted:" + str([i for (i,_) in weights])
-        # return index of winning node
-        return weights[0][0]
-
-    def learn(self,step,steps,learning_set):
-        for data_set in learning_set:
-            self.set_input(data_set)
-            n = self.findWinner()
-#            print "winner is: " + str(n)
-            self.modifyConscious(n)
-            neighbors = self.findNeighbors(n)
-            self.modifyWeights([(n,1)] + neighbors)
-        self.reduceFactors(step,steps)
-
-    def findNeighbors1D(self, n):
-        '''
-        Returns list of tuples with two elements - first is the nr of neighbor node, second is distance
-        '''
-        neighbors = []
-        for i in xrange(1,self.radius+1):
-            if n-i >= 0:
-                neighbors.append( (n-i,i+1) )
-            if n+i < len(self.layers[1]):
-                neighbors.append( (n+i,i+1) )
-        return neighbors
-
-    def findNeighbors2D(self, n):
-        '''
-        Returns list of tuples with two elements - first is the nr of neighbor node, second is distance
-        '''
-        rows = sqrt(len(self.layers[1]))
-        neighbors = []
-        for i in xrange(len(self.layers[1])):
-            if n != i:
-                dist = abs(i // rows - n // rows) + abs(i % rows - n % rows)
-                if dist <= self.radius:
-                    neighbors.append( (i,int(dist)+1) )
-        return neighbors
-
-
-    def modifyWeights(self, neighbors):
-        for node,radius in neighbors:
-            for i,values in enumerate(zip(self.layers[1][node].weights,get_output(self.layers[0]))):
-                self.layers[1][node].weights[i] += self.teta * (1 / radius) * (values[1] - values[0])
-
-
-    def reduceFactors(self,step,steps):
-        self.teta
-
-    def modifyConscious(self, n):
-        self.layers[1][n].conscious -= self.conscious_min
-        for i,node in enumerate(self.layers[1]):
-            if i != n:
-                new_val = node.conscious + 1.0 / len(self.layers[1])
-                node.conscious = new_val if new_val <= 1.0 else 1.0
-
-
-def get_with_conscious(net):
-    if net.conscious:
-        return [(i,node) for i,node in enumerate(net.layers[1]) if node.conscious > net.conscious_min]
-    else:
-        return net.layers[1]
-
-def euclidean(x,y):
-    sumSq=0.0
-
-    #add up the squared differences
-    for i in range(len(x)):
-        sumSq+=(x[i]-y[i])**2
-
-    #take the square root of the result
-    return sumSq**0.5

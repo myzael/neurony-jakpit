@@ -1,5 +1,5 @@
 import argparse
-from network import NetworkFactory,Network, step_f,log_f
+from network import NetworkFactory,step_f,log_f
 
 __author__ = 'pita'
 
@@ -16,7 +16,7 @@ def main():
     elif args.fun and args.fun[0] == "log":
         fun = log_f
 
-    net = Network()
+    net = NetworkFactory().get_network()
     if args.random:
         net = NetworkFactory().build_random(net,args.random,fun)
     elif args.data:

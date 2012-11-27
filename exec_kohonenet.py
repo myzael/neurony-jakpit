@@ -1,5 +1,5 @@
 import argparse
-from network import NetworkFactory, step_f,log_f, KohonenNetwork
+from network import NetworkFactory, step_f,log_f
 
 __author__ = 'pita'
 
@@ -18,20 +18,22 @@ def main():
     elif args.fun and args.fun[0] == "log":
         fun = log_f
 
-    net = KohonenNetwork()
+    net = NetworkFactory().get_kohonen_network()
+
+    # init weights from file or randomly
+    if args.random:
+        net = NetworkFactory().build_random(net,args.random,fun,init_zeros=False)
+    elif args.data:
+        net= NetworkFactory().build_from_file(net,args.data[0],fun)
+
     # init specific kohonen properties
     net.findNeighbors = net.findNeighbors2D
     net.radius = 1
     net.teta = 0.06
+    net.max_teta = net.teta
     net.conscious_min = 0.75
 
-    # init weights from file or randomly
-    if args.random:
-        net = NetworkFactory().build_random(net,args.random,fun)
-    elif args.data:
-        net= NetworkFactory().build_from_file(net,args.data[0],fun)
-
-    # init conscience
+    # init conscious
     for node in net.layers[1]:
         node.conscious = 1.0
     net.conscious = True
@@ -40,7 +42,7 @@ def main():
     with open(args.learn_file[0]) as f:
         learning_set = [[float(a) for a in line.split()] for line in f]
     for step in xrange(args.steps[0]):
-        net.learn(step,args.steps,learning_set)
+        net.learn(step,args.steps[0],learning_set)
 
 
     while True:
